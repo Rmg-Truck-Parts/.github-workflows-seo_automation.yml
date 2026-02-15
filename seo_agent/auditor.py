@@ -1,45 +1,54 @@
 import requests
 from bs4 import BeautifulSoup
 import logging
+import time
+import random
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AuditAgent")
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0"
+]
 
 class AuditAgent:
     def analyze_page(self, url):
         """
         Fetches and audits a webpage for SEO best practices.
+        Includes anti-spam features.
         """
         logger.info(f"Starting audit for: {url}")
+
+        # Anti-spam delay
+        time.sleep(random.uniform(1, 4))
+
         try:
-            # We use a user-agent to avoid being blocked by simple bot detectors
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SEO-Agent/1.0'}
-            response = requests.get(url, headers=headers, timeout=10)
+            headers = {'User-Agent': random.choice(USER_AGENTS)}
+            response = requests.get(url, headers=headers, timeout=15)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.text, 'html.parser')
             issues = []
 
-            # 1. Check Title
             title = soup.title.string if soup.title else None
             if not title:
                 issues.append("Missing <title> tag.")
             elif len(title) < 30:
                 issues.append(f"Title too short ({len(title)} chars): '{title}'")
 
-            # 2. Check Meta Description
             meta_desc = soup.find('meta', attrs={'name': 'description'})
             if not meta_desc or not meta_desc.get('content'):
                 issues.append("Missing meta description.")
 
-            # 3. Check Headings
             h1s = soup.find_all('h1')
             if len(h1s) == 0:
                 issues.append("Missing H1 heading.")
             elif len(h1s) > 1:
                 issues.append(f"Multiple H1 headings found ({len(h1s)}).")
 
-            # 4. Check Images Alt Tags
             images = soup.find_all('img')
             missing_alt = [img for img in images if not img.get('alt')]
             if missing_alt:
@@ -60,6 +69,5 @@ class AuditAgent:
 
 if __name__ == "__main__":
     agent = AuditAgent()
-    # Test with a known site
     results = agent.analyze_page("http://www.matrix-music.com.pl")
     print(results)

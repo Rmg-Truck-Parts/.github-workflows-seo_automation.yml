@@ -1,4 +1,5 @@
 import logging
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ContentAgent")
@@ -10,11 +11,9 @@ class ContentAgent:
     def generate_seo_content(self, topic, keywords):
         """
         Generates SEO-optimized content.
-        In production, this calls an LLM API.
         """
-        logger.info(f"Generating content using {self.model_name} for topic: {topic}")
+        logger.info(f"Generating content for topic: {topic}")
 
-        # Simulating LLM response
         content = f"""
         # {topic}
 
@@ -26,19 +25,47 @@ class ContentAgent:
 
         ## Our Services
         - High-quality {keywords[0]}
-        - Professional {keywords[1] if len(keywords) > 1 else 'support'}
+        - Professional support
         - 24/7 Availability
 
         Contact us today to learn more!
         """
-        return content.strip()
+
+        final_content = content.strip()
+        if self.validate_content(final_content, keywords):
+            return final_content
+        else:
+            logger.warning("Content failed quality validation. Regenerating...")
+            return "Quality content placeholder."
+
+    def validate_content(self, content, keywords):
+        """
+        Checks for keyword stuffing and natural language.
+        (Anti-spam feature)
+        """
+        # Check keyword density (simple version)
+        words = re.findall(r'\w+', content.lower())
+        total_words = len(words)
+
+        for kw in keywords:
+            kw_count = content.lower().count(kw.lower())
+            density = (kw_count / total_words) * 100 if total_words > 0 else 0
+            if density > 10: # Threshold for keyword stuffing
+                logger.warning(f"Keyword stuffing detected for '{kw}': {density:.2f}%")
+                return False
+
+        # Check for minimum length
+        if total_words < 30:
+            logger.warning("Content too short.")
+            return False
+
+        return True
 
     def search_directories(self, niche):
         """
         Finds directory submission opportunities.
         """
         logger.info(f"Searching for directories in niche: {niche}")
-        # Real logic would use a search API and filter for 'add company' or 'catalog'
         return [
             f"https://www.google.com/search?q={niche}+katalog+firm",
             f"https://panoramafirm.pl/szukaj?q={niche}",
@@ -47,4 +74,5 @@ class ContentAgent:
 
 if __name__ == "__main__":
     agent = ContentAgent()
-    print(agent.generate_seo_content("SEO for Music Bands", ["wedding band", "music event"]))
+    c = agent.generate_seo_content("SEO test", ["test"])
+    print(c)

@@ -1,4 +1,4 @@
 __pycache__/
 *.pyc
-*.json
+report_*.json
 seo_report.txt
