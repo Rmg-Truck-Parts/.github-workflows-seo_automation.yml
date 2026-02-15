@@ -1,4 +1,6 @@
 __pycache__/
 *.pyc
-report_*.json
-seo_report.txt
+reports/
+logs/
+config.json
+*.log

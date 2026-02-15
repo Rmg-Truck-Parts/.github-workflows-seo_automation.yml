@@ -3,12 +3,24 @@ import time
 import logging
 import json
 import os
+import sys
+
+# Add the current directory to sys.path to allow running from root
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from monitor import RankAgent
 from auditor import AuditAgent
 from generator import ContentAgent
 
 # Global Configuration
-logging.basicConfig(level=logging.INFO, format='[%(name)s] %(levelname)s: %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(name)s] %(levelname)s: %(message)s',
+    handlers=[
+        logging.FileHandler("logs/seo_army.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger("Orchestrator")
 
 class SEOAgentArmy:
@@ -28,7 +40,6 @@ class SEOAgentArmy:
     def process_site(self, site):
         """
         Runs a full SEO cycle for a single site.
-        This represents an 'Agent' working on a specific project.
         """
         name = site['name']
         url = site['url']
@@ -36,30 +47,34 @@ class SEOAgentArmy:
 
         logger.info(f"Agent starting work on {name}...")
 
-        # 1. Monitoring
+        # 1. Monitoring (Real Audit logic in RankAgent)
         ranks = {kw: self.rank_agent.get_google_rank(kw, url) for kw in keywords}
 
-        # 2. Audit
+        # 2. Technical Audit (Real Audit logic in AuditAgent)
         audit = self.audit_agent.analyze_page(url)
 
-        # 3. Optimization Recommendation
+        # 3. AI Search Optimization (GEO)
+        logger.info(f"Generating GEO (Generative Engine Optimization) strategy for {name}...")
+        geo_strategy = self.content_agent.generate_geo_strategy(name, keywords)
+
+        # 4. Optimization Recommendation
         if audit['score'] < 80:
             logger.info(f"Low SEO score ({audit['score']}) for {name}. Generating optimization content...")
             topic = f"Optimizing {name} for {keywords[0]}"
             suggestion = self.content_agent.generate_seo_content(topic, keywords)
-            # In real scenario, this would be emailed or pushed via API
 
         logger.info(f"Agent finished work on {name}. Score: {audit['score']}, Ranks: {ranks}")
 
-        # Save report locally
+        # Save report locally in reports/ directory
         report = {
             "timestamp": time.ctime(),
             "site": name,
             "url": url,
             "audit": audit,
-            "rankings": ranks
+            "rankings": ranks,
+            "geo_strategy": geo_strategy
         }
-        filename = f"report_{name.lower().replace(' ', '_')}.json"
+        filename = f"reports/report_{name.lower().replace(' ', '_')}.json"
         with open(filename, 'w') as f:
             json.dump(report, f, indent=2)
 
@@ -67,6 +82,10 @@ class SEOAgentArmy:
         """
         Spawns multiple agents in parallel.
         """
+        if not self.sites:
+            logger.error("No sites configured in config.json")
+            return
+
         threads = []
         for site in self.sites:
             t = threading.Thread(target=self.process_site, args=(site,))
@@ -92,23 +111,8 @@ class SEOAgentArmy:
             logger.info("Shutting down the army...")
 
 if __name__ == "__main__":
-    # Create a default config if it doesn't exist
-    if not os.path.exists("config.json"):
-        default_config = [
-            {
-                "name": "Matrix Music",
-                "url": "http://www.matrix-music.com.pl",
-                "keywords": ["zespół na wesele Częstochowa", "zespół muzyczny"]
-            },
-            {
-                "name": "RMG Truck",
-                "url": "http://www.rmg-truck.pl",
-                "keywords": ["hurtownia części motoryzacyjnych", "części do maszyn"]
-            }
-        ]
-        with open("config.json", "w") as f:
-            json.dump(default_config, f, indent=2)
-
     army = SEOAgentArmy()
-    # Run once for demonstration
-    army.start_army()
+    if "--continuous" in sys.argv:
+        army.run_continuous()
+    else:
+        army.start_army()
